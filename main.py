@@ -13,7 +13,7 @@ ACCESS_TOKEN_SECRET = "XXXXXXXXXXXXXXXXXX"
 class PlacarDoAlicate:
     def __init__(self):
         self.soup = None
-        self.comments = {}
+        self.comments = []
         self.last_comment_id = None
 
         self.twitter = twitter.Api(consumer_key = CONSUMER_KEY,
@@ -36,7 +36,7 @@ class PlacarDoAlicate:
             comments_html = self.soup.findAll("li", { "class" : "comment comment_li"})
             for comment in comments_html:
                 text = comment.article.find("div", {"class": "comment-body"}).p.text
-                self.comments[comment.article['data-id']] = text
+                self.comments.append((int(comment.article['data-id'][8:]), text))
         except:
             pass
 
@@ -55,22 +55,22 @@ class PlacarDoAlicate:
                 return f.read()
         except:
             print("Failed to load last comment")
- 
+
     def tweet_comments(self):
-        last = self.load_last_comment()
-        for cid in self.comments:
-            if cid[8:] > last:
-                self.send_tweet(cid[8:], self.comments[cid])
+        last = int(self.load_last_comment())
+        for (cid, text) in self.comments[::-1]:
+            if cid > last:
+                self.send_tweet(cid, text)
 
         self.store_last_comment()
- 
+
     def send_tweet(self, cid, text):
         if len(text) > 114:
             text = text[:114] + "..."
-        
-        tweet = text + " http://www.folha.com/cs" + cid
+
+        tweet = "%s http://www.folha.com/cs%d" % (text, cid)
         self.twitter.PostUpdate(tweet)
- 
+
 if __name__ == '__main__':
     pa = PlacarDoAlicate()
     pa.tweet_comments()
