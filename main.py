@@ -2,6 +2,9 @@ import urllib2
 from BeautifulSoup import BeautifulSoup
 import json
 import twitter
+import os
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 PROFILE_URL = "http://comentarios1.folha.com.br/perfil/175843?skin=folhaonline"
 
@@ -44,14 +47,14 @@ class PlacarDoAlicate:
 
     def store_last_comment(self):
         try:
-            with open("last_comment.txt", "w") as f:
+            with open(BASE_DIR + "/last_comment.txt", "w") as f:
                 f.write(self.last_comment_id)
         except:
             print("Failed to store last comment")
 
     def load_last_comment(self):
         try:
-            with open("last_comment.txt", "r") as f:
+            with open(BASE_DIR + "/last_comment.txt", "r") as f:
                 return f.read()
         except:
             print("Failed to load last comment")
