@@ -104,10 +104,10 @@ class PlacarDoAlicate:
             return
         self.score = old_score
 
-        font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 96)
-        img = Image.new("RGBA", (600,200), (120,20,20))
+        font = ImageFont.truetype(BASE_DIR + "/kidsboardgamefont.ttf", 96)
+        img = Image.new("RGBA", (700, 160), (204, 204, 204))
         draw = ImageDraw.Draw(img)
-        draw.text((180, 50), self.score, (255,255,0), font = font)
+        draw.text((140, 25), self.score, (28, 28, 28), font = font)
         draw = ImageDraw.Draw(img)
         img.save(BASE_DIR + "/score_banner.png")
 
