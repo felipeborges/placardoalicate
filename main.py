@@ -3,6 +3,10 @@ from BeautifulSoup import BeautifulSoup
 import json
 import twitter
 import os
+import PIL
+from PIL import ImageFont
+from PIL import Image
+from PIL import ImageDraw
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -18,6 +22,7 @@ class PlacarDoAlicate:
         self.soup = None
         self.comments = []
         self.last_comment_id = None
+        self.score = self.load_score()
 
         self.twitter = twitter.Api(consumer_key = CONSUMER_KEY,
                                    consumer_secret = CONSUMER_SECRET,
@@ -45,6 +50,11 @@ class PlacarDoAlicate:
 
         self.last_comment_id = comments_html[0].article['data-id'][8:]
 
+    def get_scoreboard(self):
+        profile_id = self.soup.find("address", { "class" : "profile-name" }).a.text
+        score = profile_id[len("alicate("):-1]
+        return score
+
     def store_last_comment(self):
         try:
             with open(BASE_DIR + "/last_comment.txt", "w") as f:
@@ -58,6 +68,20 @@ class PlacarDoAlicate:
                 return f.read()
         except:
             print("Failed to load last comment")
+
+    def load_score(self):
+        try:
+            with open(BASE_DIR + "/score.txt", "r") as f:
+                return f.read()
+        except:
+            print("Failed to load score")
+
+    def store_score(self):
+        try:
+            with open(BASE_DIR + "/score.txt", "w") as f:
+                f.write(self.score)
+        except:
+            print("Failed to store score")
 
     def tweet_comments(self):
         last = int(self.load_last_comment())
@@ -74,6 +98,24 @@ class PlacarDoAlicate:
         tweet = "%s http://www.folha.com/cs%d" % (text, cid)
         self.twitter.PostUpdate(tweet)
 
+    def generate_banner(self):
+        old_score = self.get_scoreboard()
+        if old_score == self.score:
+            return
+        self.score = old_score
+
+        font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 96)
+        img = Image.new("RGBA", (600,200), (120,20,20))
+        draw = ImageDraw.Draw(img)
+        draw.text((180, 50), self.score, (255,255,0), font = font)
+        draw = ImageDraw.Draw(img)
+        img.save(BASE_DIR + "/score_banner.png")
+
+        self.twitter.UpdateBanner(BASE_DIR + "/score_banner.png")
+        self.store_score()
+
+
 if __name__ == '__main__':
     pa = PlacarDoAlicate()
     pa.tweet_comments()
+    pa.generate_banner()
