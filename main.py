@@ -3,10 +3,8 @@ from BeautifulSoup import BeautifulSoup
 import json
 import twitter
 import os
-import PIL
-from PIL import ImageFont
-from PIL import Image
-from PIL import ImageDraw
+from PIL import Image, ImageFont, ImageDraw
+import textwrap
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -17,12 +15,22 @@ CONSUMER_SECRET = "XXXXXXXXXXXXXXXXXX"
 ACCESS_TOKEN = "XXXXXXXXXXXXXXXXXX"
 ACCESS_TOKEN_SECRET = "XXXXXXXXXXXXXXXXXX"
 
+IMG_WIDTH, IMG_HEIGHT = (800, 400)
+BLUE_BG = (38, 169, 255)
+FOLHA_FONT = "gloucester.ttf"
+FONT_SIZE = 64
+
+font = ImageFont.truetype(FOLHA_FONT, FONT_SIZE)
+
+# text + link + media (140 - 23 - 23 - len("..."))
+TWEET_MAX_SIZE = 91
+
 class PlacarDoAlicate:
     def __init__(self):
         self.soup = None
         self.comments = []
         self.last_comment_id = None
-        self.score = self.load_score()
+        self.score = None
 
         self.twitter = twitter.Api(consumer_key = CONSUMER_KEY,
                                    consumer_secret = CONSUMER_SECRET,
@@ -30,6 +38,7 @@ class PlacarDoAlicate:
                                    access_token_secret = ACCESS_TOKEN_SECRET)
 
         self.get_last_comments()
+        self.load_history()
 
     def get_soup(self):
         try:
@@ -44,7 +53,8 @@ class PlacarDoAlicate:
             comments_html = self.soup.findAll("li", { "class" : "comment comment_li"})
             for comment in comments_html:
                 text = comment.article.find("div", {"class": "comment-body"}).p.text
-                self.comments.append((int(comment.article['data-id'][8:]), text))
+                title = comment.article.find("div", {"class": "comment-meta"}).h6.span.text
+                self.comments.append((int(comment.article['data-id'][8:]), text, title))
         except:
             pass
 
@@ -55,48 +65,46 @@ class PlacarDoAlicate:
         score = profile_id[len("alicate("):-1]
         return score
 
-    def store_last_comment(self):
+    def load_history(self):
         try:
-            with open(BASE_DIR + "/last_comment.txt", "w") as f:
-                f.write(self.last_comment_id)
+            with open(BASE_DIR + "/history.txt", "r") as f:
+                self.last_comment_id, self.score = f.read().split(",")
         except:
-            print("Failed to store last comment")
+            print("Failed to load history")
 
-    def load_last_comment(self):
+    def store_history(self):
         try:
-            with open(BASE_DIR + "/last_comment.txt", "r") as f:
-                return f.read()
+            with open(BASE_DIR + "/history.txt", "w") as f:
+                f.write("%s,%s" % (self.last_comment_id, self.score))
         except:
-            print("Failed to load last comment")
-
-    def load_score(self):
-        try:
-            with open(BASE_DIR + "/score.txt", "r") as f:
-                return f.read()
-        except:
-            print("Failed to load score")
-
-    def store_score(self):
-        try:
-            with open(BASE_DIR + "/score.txt", "w") as f:
-                f.write(self.score)
-        except:
-            print("Failed to store score")
+            print("Failed to store history")
 
     def tweet_comments(self):
-        last = int(self.load_last_comment())
-        for (cid, text) in self.comments[::-1]:
-            if cid > last:
-                self.send_tweet(cid, text)
+        for (cid, text, title) in self.comments[::-1]:
+            if cid > int(self.last_comment_id):
+                self.send_tweet(cid, text, title)
 
-        self.store_last_comment()
-
-    def send_tweet(self, cid, text):
-        if len(text) > 91:
-            text = text[:91] + "..."
+    def send_tweet(self, cid, text, title):
+        if len(text) > TWEET_MAX_SIZE:
+            text = text[:TWEET_MAX_SIZE] + "..."
 
         tweet = "%s http://www.folha.com/cs%d" % (text, cid)
-        self.twitter.PostMedia(tweet, BASE_DIR + "/score_banner.png")
+        self.generate_post_media(title)
+        self.twitter.PostMedia(tweet, BASE_DIR + "/news_title.png")
+        #print tweet
+
+    def generate_post_media(self, title):
+        img = Image.new("RGBA", (IMG_WIDTH, IMG_HEIGHT), BLUE_BG)
+        draw = ImageDraw.Draw(img)
+
+        offset = 5
+        for line in textwrap.wrap(title, width = 40):
+            w, h = draw.textsize(line, font = font)
+            draw.text((((IMG_WIDTH-w)/2), ((IMG_HEIGHT-h)/2) + offset-h), line, (255, 255, 255), font = font)
+            offset += font.getsize(line)[1]
+
+        draw = ImageDraw.Draw(img)
+        img.save(BASE_DIR + "/news_title.png")
 
     def generate_banner(self):
         old_score = self.get_scoreboard()
@@ -111,9 +119,6 @@ class PlacarDoAlicate:
         draw = ImageDraw.Draw(img)
         img.save(BASE_DIR + "/score_banner.png")
 
-        #self.twitter.UpdateBanner(BASE_DIR + "/score_banner.png")
-        self.store_score()
-
     def update_banner(self):
         self.generate_banner()
         self.twitter.UpdateBanner(BASE_DIR + "/score_banner.png")
@@ -122,3 +127,4 @@ if __name__ == '__main__':
     pa = PlacarDoAlicate()
     pa.update_banner()
     pa.tweet_comments()
+    pa.store_history()
