@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import urllib2
 from BeautifulSoup import BeautifulSoup
 import json
@@ -18,9 +19,11 @@ ACCESS_TOKEN_SECRET = "XXXXXXXXXXXXXXXXXX"
 IMG_WIDTH, IMG_HEIGHT = (800, 400)
 BLUE_BG = (38, 169, 255)
 FOLHA_FONT = "gloucester.ttf"
-FONT_SIZE = 64
+FONT_SIZE = 48
 
 font = ImageFont.truetype(FOLHA_FONT, FONT_SIZE)
+
+AUTHOR = "alicate"
 
 # text + link + media (140 - 23 - 23 - len("..."))
 TWEET_MAX_SIZE = 91
@@ -85,23 +88,23 @@ class PlacarDoAlicate:
                 self.send_tweet(cid, text, title)
 
     def send_tweet(self, cid, text, title):
-        if len(text) > TWEET_MAX_SIZE:
-            text = text[:TWEET_MAX_SIZE] + "..."
-
-        tweet = "%s http://www.folha.com/cs%d" % (text, cid)
-        self.generate_post_media(title)
+        tweet = "%s http://www.folha.com/cs%d" % (title, cid)
+        self.generate_post_media("\"" + text + "\"")
         self.twitter.PostMedia(tweet, BASE_DIR + "/news_title.png")
-        #print tweet
 
-    def generate_post_media(self, title):
+    def generate_post_media(self, text):
         img = Image.new("RGBA", (IMG_WIDTH, IMG_HEIGHT), BLUE_BG)
         draw = ImageDraw.Draw(img)
 
         offset = 5
-        for line in textwrap.wrap(title, width = 40):
+        for line in textwrap.wrap(text, width = 50):
             w, h = draw.textsize(line, font = font)
-            draw.text((((IMG_WIDTH-w)/2), ((IMG_HEIGHT-h)/2) + offset-h), line, (255, 255, 255), font = font)
+            draw.text((((IMG_WIDTH-w)/2), (h/2) + offset), line, (255, 255, 255), font = font)
             offset += font.getsize(line)[1]
+
+        # write signature
+        w, h = draw.textsize(AUTHOR, font = font)
+        draw.text(((IMG_WIDTH + w)/2, 2*h + offset), "-- " + AUTHOR, (255, 255, 255), font = font)
 
         draw = ImageDraw.Draw(img)
         img.save(BASE_DIR + "/news_title.png")
