@@ -92,11 +92,11 @@ class PlacarDoAlicate:
         self.store_last_comment()
 
     def send_tweet(self, cid, text):
-        if len(text) > 114:
-            text = text[:114] + "..."
+        if len(text) > 91:
+            text = text[:91] + "..."
 
         tweet = "%s http://www.folha.com/cs%d" % (text, cid)
-        self.twitter.PostUpdate(tweet)
+        self.twitter.PostMedia(tweet, BASE_DIR + "/score_banner.png")
 
     def generate_banner(self):
         old_score = self.get_scoreboard()
@@ -111,11 +111,14 @@ class PlacarDoAlicate:
         draw = ImageDraw.Draw(img)
         img.save(BASE_DIR + "/score_banner.png")
 
-        self.twitter.UpdateBanner(BASE_DIR + "/score_banner.png")
+        #self.twitter.UpdateBanner(BASE_DIR + "/score_banner.png")
         self.store_score()
 
+    def update_banner(self):
+        self.generate_banner()
+        self.twitter.UpdateBanner(BASE_DIR + "/score_banner.png")
 
 if __name__ == '__main__':
     pa = PlacarDoAlicate()
+    pa.update_banner()
     pa.tweet_comments()
-    pa.generate_banner()
